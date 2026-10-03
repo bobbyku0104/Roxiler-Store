@@ -8,6 +8,8 @@ import Signup from './pages/Signup'
 import ChangePassword from './pages/ChangePassword'
 import NotFound from './pages/NotFound'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import UserList from './pages/admin/UserList'
+import AdminStoreList from './pages/admin/AdminStoreList'
 import StoreList from './pages/user/StoreList'
 import OwnerDashboard from './pages/owner/OwnerDashboard'
 
@@ -27,6 +29,8 @@ export default function App() {
         <Route element={<Layout />}>
           <Route element={<ProtectedRoute roles={['admin']} />}>
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<UserList />} />
+            <Route path="/admin/stores" element={<AdminStoreList />} />
           </Route>
 
           <Route element={<ProtectedRoute roles={['user']} />}>
