@@ -468,3 +468,7 @@ a {
   color: var(--muted);
   font-size: 14px;
 }
+
+.section-title {
+  margin: 32px 0 12px;
+}
