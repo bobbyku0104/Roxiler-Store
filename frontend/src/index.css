@@ -434,3 +434,37 @@ a {
   margin: 0;
   word-break: break-word;
 }
+
+/* Star rating */
+
+.star-input {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.star {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 32px;
+  line-height: 1;
+  color: #d1d5db;
+  cursor: pointer;
+  transition: color 0.1s;
+}
+
+.star.filled {
+  color: #f59e0b;
+}
+
+.rate-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 14px;
+}
