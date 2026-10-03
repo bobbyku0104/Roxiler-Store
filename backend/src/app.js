@@ -3,6 +3,7 @@ const cors = require('cors');
 const { ValidationError, UniqueConstraintError } = require('sequelize');
 const authRoutes = require('./routes/auth.routes');
 const adminRoutes = require('./routes/admin.routes');
+const storeRoutes = require('./routes/store.routes');
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/stores', storeRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
