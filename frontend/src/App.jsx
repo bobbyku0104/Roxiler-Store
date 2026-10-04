@@ -1,16 +1,18 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
-import { HOME_BY_ROLE } from './utils/roles'
+import { HOME_BY_ROLE, ROLES } from './utils/roles'
 import ProtectedRoute from './components/ProtectedRoute'
-import Layout from './components/Layout'
-import Login from './pages/Login'
-import Signup from './pages/Signup'
-import ChangePassword from './pages/ChangePassword'
-import NotFound from './pages/NotFound'
+import GuestRoute from './components/GuestRoute'
+import AppLayout from './components/AppLayout'
+import Login from './pages/auth/Login'
+import Signup from './pages/auth/Signup'
+import ChangePassword from './pages/common/ChangePassword'
+import NotFound from './pages/common/NotFound'
 import AdminDashboard from './pages/admin/AdminDashboard'
-import UserList from './pages/admin/UserList'
-import AdminStoreList from './pages/admin/AdminStoreList'
-import StoreList from './pages/user/StoreList'
+import UsersPage from './pages/admin/UsersPage'
+import UserDetailsPage from './pages/admin/UserDetailsPage'
+import AdminStoresPage from './pages/admin/StoresPage'
+import UserStoresPage from './pages/user/StoresPage'
 import OwnerDashboard from './pages/owner/OwnerDashboard'
 
 function HomeRedirect() {
@@ -22,28 +24,30 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<HomeRedirect />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
+
+      <Route element={<GuestRoute />}>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+      </Route>
 
       <Route element={<ProtectedRoute />}>
-        <Route element={<Layout />}>
-          <Route element={<ProtectedRoute roles={['admin']} />}>
+        <Route element={<AppLayout />}>
+          <Route element={<ProtectedRoute roles={[ROLES.ADMIN]} />}>
             <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/users" element={<UserList />} />
-            <Route path="/admin/stores" element={<AdminStoreList />} />
+            <Route path="/admin/users" element={<UsersPage />} />
+            <Route path="/admin/users/:id" element={<UserDetailsPage />} />
+            <Route path="/admin/stores" element={<AdminStoresPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute roles={['user']} />}>
-            <Route path="/stores" element={<StoreList />} />
+          <Route element={<ProtectedRoute roles={[ROLES.USER]} />}>
+            <Route path="/stores" element={<UserStoresPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute roles={['owner']} />}>
+          <Route element={<ProtectedRoute roles={[ROLES.OWNER]} />}>
             <Route path="/owner" element={<OwnerDashboard />} />
           </Route>
 
-          <Route element={<ProtectedRoute roles={['user', 'owner']} />}>
-            <Route path="/password" element={<ChangePassword />} />
-          </Route>
+          <Route path="/password" element={<ChangePassword />} />
         </Route>
       </Route>
 

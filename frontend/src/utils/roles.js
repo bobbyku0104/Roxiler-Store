@@ -1,11 +1,17 @@
-export const HOME_BY_ROLE = {
-  admin: '/admin',
-  user: '/stores',
-  owner: '/owner',
+export const ROLES = {
+  ADMIN: 'ADMIN',
+  USER: 'USER',
+  OWNER: 'OWNER',
 }
 
 export const ROLE_LABELS = {
-  admin: 'Admin',
-  user: 'Normal User',
-  owner: 'Store Owner',
+  ADMIN: 'System Administrator',
+  USER: 'Normal User',
+  OWNER: 'Store Owner',
+}
+
+export const HOME_BY_ROLE = {
+  ADMIN: '/admin',
+  USER: '/stores',
+  OWNER: '/owner',
 }

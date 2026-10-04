@@ -1,69 +1,68 @@
-import { useState } from 'react'
-import { useApi } from '../../hooks/useApi'
+import { getDashboard } from '../../api/owner'
+import { useFetch } from '../../hooks/useFetch'
+import { useSort } from '../../hooks/useSort'
+import { formatDate } from '../../utils/format'
+import PageHeader from '../../components/PageHeader'
+import StatCard from '../../components/StatCard'
+import StarRating from '../../components/StarRating'
 import DataTable from '../../components/DataTable'
-import RatingBadge from '../../components/RatingBadge'
+import Alert from '../../components/Alert'
 
-function formatDate(value) {
-  return new Date(value).toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-}
+const COLUMNS = [
+  { key: 'name', label: 'Customer', sortable: true, className: 'font-medium text-slate-900' },
+  { key: 'email', label: 'Email', sortable: true },
+  { key: 'rating', label: 'Rating', sortable: true, render: (row) => <StarRating value={row.rating} size="text-sm" /> },
+  { key: 'ratedAt', label: 'Last updated', sortable: true, render: (row) => formatDate(row.ratedAt) },
+]
 
 export default function OwnerDashboard() {
-  const [sort, setSort] = useState({ sortBy: 'updatedAt', order: 'desc' })
-  const { data, loading, error } = useApi('/owner/dashboard', sort)
+  const { sort, toggleSort } = useSort('ratedAt', 'desc')
+  const { data, loading, error, reload } = useFetch(getDashboard, sort)
 
-  if (error) {
+  if (loading && !data) {
+    return <p className="text-sm text-slate-500">Loading...</p>
+  }
+
+  if (error && !data) {
+    return <Alert onRetry={reload}>{error}</Alert>
+  }
+
+  const { store, raters } = data
+
+  if (!store) {
     return (
-      <>
-        <h2>My Store</h2>
-        <div className="alert alert-error">{error}</div>
-      </>
+      <div className="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
+        <h1 className="text-lg font-semibold text-slate-900">No store assigned yet</h1>
+        <p className="mt-2 text-sm text-slate-500">
+          Once an administrator links a store to your account, its ratings will show up here.
+        </p>
+      </div>
     )
   }
 
-  const columns = [
-    { key: 'name', label: 'Name', sortable: true, render: (row) => row.user.name },
-    { key: 'email', label: 'Email', sortable: true, render: (row) => row.user.email },
-    { key: 'address', label: 'Address', render: (row) => row.user.address },
-    {
-      key: 'rating',
-      label: 'Rating',
-      sortable: true,
-      render: (row) => <span className="rating-badge">★ {row.rating}</span>,
-    },
-    { key: 'updatedAt', label: 'Rated On', sortable: true, render: (row) => formatDate(row.updatedAt) },
-  ]
-
   return (
     <>
-      <h2>{data?.store.name || 'My Store'}</h2>
-      {data && <p className="muted">{data.store.address}</p>}
+      <PageHeader title={store.name} description={store.address || store.email} />
 
-      <div className="stats-grid">
-        <div className="card stat-card">
-          <span className="stat-label">Average Rating</span>
-          <span className="stat-value">
-            {data ? <RatingBadge value={data.averageRating} /> : '...'}
-          </span>
-        </div>
-        <div className="card stat-card">
-          <span className="stat-label">Total Ratings</span>
-          <span className="stat-value">{data ? data.totalRatings : '...'}</span>
-        </div>
+      <Alert onRetry={reload}>{error}</Alert>
+
+      <div className="mb-8 grid gap-4 sm:grid-cols-2">
+        <StatCard label="Average rating">
+          <StarRating value={store.averageRating} size="text-2xl" />
+        </StatCard>
+        <StatCard label="Total ratings" value={store.ratingCount} />
       </div>
 
-      <h3 className="section-title">Users who rated your store</h3>
+      <h2 className="mb-3 text-lg font-semibold text-slate-900">Customers who rated your store</h2>
 
       <DataTable
-        columns={columns}
-        rows={data?.ratings || []}
+        columns={COLUMNS}
+        rows={raters}
+        rowKey="userId"
         sort={sort}
-        onSort={setSort}
+        onSort={toggleSort}
         loading={loading}
-        emptyText="No one has rated your store yet"
+        emptyMessage="Nobody has rated your store yet."
       />
     </>
   )

@@ -1,29 +1,23 @@
-import { Link } from 'react-router-dom'
-import { useApi } from '../../hooks/useApi'
+import { getDashboard } from '../../api/admin'
+import { useFetch } from '../../hooks/useFetch'
+import PageHeader from '../../components/PageHeader'
+import StatCard from '../../components/StatCard'
+import Alert from '../../components/Alert'
 
 export default function AdminDashboard() {
-  const { data, loading, error } = useApi('/admin/dashboard')
-
-  const stats = [
-    { label: 'Total Users', value: data?.totalUsers, link: '/admin/users' },
-    { label: 'Total Stores', value: data?.totalStores, link: '/admin/stores' },
-    { label: 'Total Ratings', value: data?.totalRatings },
-  ]
+  const { data, loading, error, reload } = useFetch(getDashboard)
+  const show = (value) => (loading && !data ? '…' : (value ?? '-'))
 
   return (
     <>
-      <h2>Dashboard</h2>
+      <PageHeader title="Dashboard" description="Overview of everything on the platform." />
 
-      {error && <div className="alert alert-error">{error}</div>}
+      <Alert onRetry={reload}>{error}</Alert>
 
-      <div className="stats-grid">
-        {stats.map((stat) => (
-          <div key={stat.label} className="card stat-card">
-            <span className="stat-label">{stat.label}</span>
-            <span className="stat-value">{loading ? '...' : stat.value}</span>
-            {stat.link && <Link to={stat.link}>View all</Link>}
-          </div>
-        ))}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Total users" value={show(data?.totalUsers)} to="/admin/users" />
+        <StatCard label="Total stores" value={show(data?.totalStores)} to="/admin/stores" />
+        <StatCard label="Submitted ratings" value={show(data?.totalRatings)} />
       </div>
     </>
   )

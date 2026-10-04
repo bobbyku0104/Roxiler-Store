@@ -1,10 +1,17 @@
-import { useState } from 'react'
-import { AuthContext } from './auth-context'
-import client from '../api/client'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AuthContext } from './contexts'
+import * as authApi from '../api/auth'
+import { setUnauthorizedHandler, tokenStorage } from '../api/client'
+import { useToast } from '../hooks/useToast'
+import { ROLES } from '../utils/roles'
+
+const USER_KEY = 'user'
 
 function readStoredUser() {
+  if (!tokenStorage.get()) return null
   try {
-    return JSON.parse(localStorage.getItem('user'))
+    const user = JSON.parse(localStorage.getItem(USER_KEY))
+    return user && Object.values(ROLES).includes(user.role) ? user : null
   } catch {
     return null
   }
@@ -12,33 +19,61 @@ function readStoredUser() {
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readStoredUser)
+  // True when the user clicked "Log out" (as opposed to the session expiring),
+  // so the login page shouldn't send the next person back to the old page.
+  const [loggedOutByUser, setLoggedOutByUser] = useState(false)
+  const { showToast } = useToast()
 
-  function saveSession({ token, user }) {
-    localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(user))
+  const saveSession = useCallback(({ token, user }) => {
+    tokenStorage.set(token)
+    localStorage.setItem(USER_KEY, JSON.stringify(user))
     setUser(user)
+    setLoggedOutByUser(false)
     return user
-  }
+  }, [])
 
-  async function login(email, password) {
-    const { data } = await client.post('/auth/login', { email, password })
-    return saveSession(data)
-  }
-
-  async function signup(form) {
-    const { data } = await client.post('/auth/signup', form)
-    return saveSession(data)
-  }
-
-  function logout() {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+  const clearSession = useCallback(() => {
+    tokenStorage.clear()
+    localStorage.removeItem(USER_KEY)
     setUser(null)
-  }
+  }, [])
 
-  return (
-    <AuthContext.Provider value={{ user, login, signup, logout }}>
-      {children}
-    </AuthContext.Provider>
+  const logout = useCallback(() => {
+    setLoggedOutByUser(true)
+    clearSession()
+  }, [clearSession])
+
+  useEffect(() => {
+    setUnauthorizedHandler((message) => {
+      clearSession()
+      showToast(message || 'Your session has ended, please log in again', 'error')
+    })
+    return () => setUnauthorizedHandler(null)
+  }, [clearSession, showToast])
+
+  // Refresh the saved profile on load so changes made by an admin are picked up.
+  useEffect(() => {
+    if (!tokenStorage.get()) return
+
+    authApi
+      .getCurrentUser()
+      .then((freshUser) => {
+        localStorage.setItem(USER_KEY, JSON.stringify(freshUser))
+        setUser(freshUser)
+      })
+      .catch(() => {})
+  }, [])
+
+  const value = useMemo(
+    () => ({
+      user,
+      loggedOutByUser,
+      login: async (email, password) => saveSession(await authApi.login(email, password)),
+      signup: async (form) => saveSession(await authApi.signup(form)),
+      logout,
+    }),
+    [user, loggedOutByUser, saveSession, logout],
   )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

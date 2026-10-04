@@ -1,14 +1,21 @@
 import { useState } from 'react'
-import client, { getErrorMessage, getFieldErrors } from '../../api/client'
+import { createUser } from '../../api/admin'
+import { getErrorMessage, getFieldErrors } from '../../api/client'
+import { useForm } from '../../hooks/useForm'
+import { ROLE_LABELS, ROLES } from '../../utils/roles'
 import {
-  runValidators,
+  ADDRESS_MAX,
+  NAME_MAX,
+  NAME_MIN,
+  PASSWORD_HINT,
   validateAddress,
   validateEmail,
   validateName,
   validatePassword,
-} from '../../utils/validation'
-import { ROLE_LABELS } from '../../utils/roles'
+} from '../../utils/validators'
 import FormField from '../../components/FormField'
+import Button from '../../components/Button'
+import Alert from '../../components/Alert'
 
 const validators = {
   name: validateName,
@@ -17,75 +24,100 @@ const validators = {
   password: validatePassword,
 }
 
-export default function AddUserForm({ onSuccess }) {
-  const [form, setForm] = useState({ name: '', email: '', address: '', password: '', role: 'user' })
-  const [errors, setErrors] = useState({})
+export default function AddUserForm({ onCreated, onCancel }) {
+  const { values, errors, setErrors, handleChange, handleBlur, validate } = useForm(
+    { name: '', email: '', address: '', password: '', role: ROLES.USER },
+    validators,
+  )
   const [error, setError] = useState('')
-  const [saving, setSaving] = useState(false)
-
-  function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value })
-    setErrors({ ...errors, [e.target.name]: '' })
-  }
+  const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    if (!validate()) return
 
-    const formErrors = runValidators(form, validators)
-    setErrors(formErrors)
-    if (Object.keys(formErrors).length) return
-
-    setSaving(true)
+    setSubmitting(true)
     try {
-      await client.post('/admin/users', form)
-      onSuccess()
+      const user = await createUser({
+        name: values.name.trim(),
+        email: values.email.trim(),
+        address: values.address.trim() || null,
+        password: values.password,
+        role: values.role,
+      })
+      onCreated(user)
     } catch (err) {
       setErrors(getFieldErrors(err))
       setError(getErrorMessage(err))
-    } finally {
-      setSaving(false)
+      setSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
-      {error && <div className="alert alert-error">{error}</div>}
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <Alert>{error}</Alert>
 
-      <FormField label="Full Name" name="name" value={form.name} onChange={handleChange} error={errors.name} />
-      <FormField label="Email" name="email" type="email" value={form.email} onChange={handleChange} error={errors.email} />
       <FormField
-        label="Address"
-        name="address"
-        as="textarea"
-        rows={3}
-        value={form.address}
+        label="Full name"
+        name="name"
+        value={values.name}
         onChange={handleChange}
-        error={errors.address}
+        onBlur={handleBlur}
+        error={errors.name}
+        hint={`${NAME_MIN}-${NAME_MAX} characters`}
+        maxLength={NAME_MAX}
+        autoFocus
+      />
+      <FormField
+        label="Email"
+        name="email"
+        type="email"
+        value={values.email}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        error={errors.email}
       />
       <FormField
         label="Password"
         name="password"
         type="password"
-        value={form.password}
+        autoComplete="new-password"
+        value={values.password}
         onChange={handleChange}
+        onBlur={handleBlur}
         error={errors.password}
+        hint={PASSWORD_HINT}
+        maxLength={16}
       />
+      <FormField
+        label="Address"
+        name="address"
+        as="textarea"
+        rows={2}
+        value={values.address}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        error={errors.address}
+        maxLength={ADDRESS_MAX}
+        optional
+      />
+      <FormField label="Role" name="role" as="select" value={values.role} onChange={handleChange} error={errors.role}>
+        {Object.values(ROLES).map((role) => (
+          <option key={role} value={role}>
+            {ROLE_LABELS[role]}
+          </option>
+        ))}
+      </FormField>
 
-      <div className="form-field">
-        <label htmlFor="role">Role</label>
-        <select id="role" name="role" value={form.role} onChange={handleChange}>
-          {Object.entries(ROLE_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+      <div className="flex justify-end gap-2 pt-2">
+        <Button variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" loading={submitting}>
+          Add user
+        </Button>
       </div>
-
-      <button className="btn btn-primary" disabled={saving}>
-        {saving ? 'Saving...' : 'Add User'}
-      </button>
     </form>
   )
 }

@@ -1,81 +1,123 @@
 import { useState } from 'react'
-import client, { getErrorMessage, getFieldErrors } from '../../api/client'
-import { useApi } from '../../hooks/useApi'
-import { runValidators, validateAddress, validateEmail, validateName } from '../../utils/validation'
+import { createStore, getOwners } from '../../api/admin'
+import { getErrorMessage, getFieldErrors } from '../../api/client'
+import { useFetch } from '../../hooks/useFetch'
+import { useForm } from '../../hooks/useForm'
+import {
+  ADDRESS_MAX,
+  STORE_NAME_MAX,
+  validateAddress,
+  validateEmail,
+  validateStoreName,
+} from '../../utils/validators'
 import FormField from '../../components/FormField'
+import Button from '../../components/Button'
+import Alert from '../../components/Alert'
 
 const validators = {
-  name: validateName,
+  name: validateStoreName,
   email: validateEmail,
   address: validateAddress,
 }
 
-export default function AddStoreForm({ onSuccess }) {
-  const [form, setForm] = useState({ name: '', email: '', address: '', ownerId: '' })
-  const [errors, setErrors] = useState({})
+export default function AddStoreForm({ onCreated, onCancel }) {
+  const { values, errors, setErrors, handleChange, handleBlur, validate } = useForm(
+    { name: '', email: '', address: '', ownerId: '' },
+    validators,
+  )
+  const { data: owners = [], loading: loadingOwners } = useFetch(getOwners)
   const [error, setError] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
-  const { data: ownersData } = useApi('/admin/users', { role: 'owner' })
-  const owners = ownersData?.users || []
-
-  function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value })
-    setErrors({ ...errors, [e.target.name]: '' })
-  }
+  const availableOwners = owners.filter((owner) => !owner.hasStore)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    if (!validate()) return
 
-    const formErrors = runValidators(form, validators)
-    setErrors(formErrors)
-    if (Object.keys(formErrors).length) return
-
-    setSaving(true)
+    setSubmitting(true)
     try {
-      await client.post('/admin/stores', { ...form, ownerId: form.ownerId || null })
-      onSuccess()
+      const store = await createStore({
+        name: values.name.trim(),
+        email: values.email.trim(),
+        address: values.address.trim() || null,
+        ownerId: values.ownerId ? Number(values.ownerId) : null,
+      })
+      onCreated(store)
     } catch (err) {
       setErrors(getFieldErrors(err))
       setError(getErrorMessage(err))
-    } finally {
-      setSaving(false)
+      setSubmitting(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
-      {error && <div className="alert alert-error">{error}</div>}
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <Alert>{error}</Alert>
 
-      <FormField label="Store Name" name="name" value={form.name} onChange={handleChange} error={errors.name} />
-      <FormField label="Email" name="email" type="email" value={form.email} onChange={handleChange} error={errors.email} />
+      <FormField
+        label="Store name"
+        name="name"
+        value={values.name}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        error={errors.name}
+        maxLength={STORE_NAME_MAX}
+        autoFocus
+      />
+      <FormField
+        label="Email"
+        name="email"
+        type="email"
+        value={values.email}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        error={errors.email}
+      />
       <FormField
         label="Address"
         name="address"
         as="textarea"
-        rows={3}
-        value={form.address}
+        rows={2}
+        value={values.address}
         onChange={handleChange}
+        onBlur={handleBlur}
         error={errors.address}
+        maxLength={ADDRESS_MAX}
+        optional
       />
+      <FormField
+        label="Store owner"
+        name="ownerId"
+        as="select"
+        value={values.ownerId}
+        onChange={handleChange}
+        error={errors.ownerId}
+        disabled={loadingOwners}
+        hint={
+          !loadingOwners && !availableOwners.length
+            ? 'Every store owner already has a store. Add a new Store Owner user first.'
+            : 'Only store owners without a store are listed.'
+        }
+        optional
+      >
+        <option value="">No owner</option>
+        {availableOwners.map((owner) => (
+          <option key={owner.id} value={owner.id}>
+            {owner.name} ({owner.email})
+          </option>
+        ))}
+      </FormField>
 
-      <div className="form-field">
-        <label htmlFor="ownerId">Store Owner</label>
-        <select id="ownerId" name="ownerId" value={form.ownerId} onChange={handleChange}>
-          <option value="">No owner</option>
-          {owners.map((owner) => (
-            <option key={owner.id} value={owner.id}>
-              {owner.name} ({owner.email})
-            </option>
-          ))}
-        </select>
-        {errors.ownerId && <span className="field-error">{errors.ownerId}</span>}
+      <div className="flex justify-end gap-2 pt-2">
+        <Button variant="secondary" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit" loading={submitting}>
+          Add store
+        </Button>
       </div>
-
-      <button className="btn btn-primary" disabled={saving}>
-        {saving ? 'Saving...' : 'Add Store'}
-      </button>
     </form>
   )
 }

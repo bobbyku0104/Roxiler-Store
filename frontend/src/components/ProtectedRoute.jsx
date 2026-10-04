@@ -1,12 +1,14 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { HOME_BY_ROLE } from '../utils/roles'
 
 export default function ProtectedRoute({ roles }) {
-  const { user } = useAuth()
+  const { user, loggedOutByUser } = useAuth()
+  const location = useLocation()
 
   if (!user) {
-    return <Navigate to="/login" replace />
+    const state = loggedOutByUser ? undefined : { from: location.pathname }
+    return <Navigate to="/login" replace state={state} />
   }
 
   if (roles && !roles.includes(user.role)) {
