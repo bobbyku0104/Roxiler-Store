@@ -51,7 +51,7 @@ ADMIN_PASSWORD=Admin@123                  # 8-16 chars, 1 uppercase, 1 special c
 | Store Owner (Urban Style Clothing) | `owner2@storerating.com` | `Owner@123` |
 | Normal User | `user1@storerating.com` · `user2@…` · `user3@…` | `User@1234` |
 
-Demo accounts are not created when `NODE_ENV=production`; only the admin is.
+With `NODE_ENV=production` the demo accounts are only created when `SEED_DEMO_DATA=true`; otherwise just the admin is.
 
 ### Backend scripts
 
@@ -63,6 +63,35 @@ Demo accounts are not created when `NODE_ENV=production`; only the admin is.
 | `npm run db:seed` | Insert demo data (safe to re-run) |
 | `npm run db:setup` | `db:migrate` + `db:seed` |
 | `npm run db:reset` | Drop everything and run `db:setup` again (refuses when `NODE_ENV=production`) |
+
+---
+
+## Deploying to Render
+
+The repository includes a [`render.yaml`](render.yaml) Blueprint that creates three resources in the Singapore region: a free PostgreSQL database, the API (Node web service) and the frontend (static site).
+
+1. Push the repository to GitHub.
+2. In the Render dashboard choose **New → Blueprint** and select the repository.
+3. Render asks for three values. The service URLs follow the pattern `https://<service-name>.onrender.com`:
+
+   | Variable | Service | Value |
+   |---|---|---|
+   | `ADMIN_PASSWORD` | store-rating-api | Password for the admin account (8-16 chars, 1 uppercase, 1 special character) |
+   | `CORS_ORIGIN` | store-rating-api | Frontend URL, e.g. `https://store-rating-web.onrender.com` |
+   | `VITE_API_URL` | store-rating-web | API URL, e.g. `https://store-rating-api.onrender.com` |
+
+4. Click **Apply**. The API runs migrations and the seed on every start, so the database is ready on the first boot.
+5. Once both services are live, open each one in the dashboard and compare its URL with what you entered. If Render added a suffix to a name (e.g. `store-rating-api-x1y2`), update `CORS_ORIGIN` / `VITE_API_URL` under **Environment** and redeploy. The frontend reads `VITE_API_URL` at build time, so it needs a **Manual Deploy → Clear build cache & deploy** after changing it.
+
+Things to know about the free plan:
+
+- The API sleeps after 15 minutes without traffic, and the first request afterwards takes up to a minute. Two things soften this:
+  - **Keep-alive workflow:** [`.github/workflows/keep-alive.yml`](.github/workflows/keep-alive.yml) pings `/api/health` every 5 minutes. To turn it on, add a repository variable under **Settings → Secrets and variables → Actions → Variables** named `API_URL` with your API URL (e.g. `https://store-rating-api.onrender.com`). GitHub pauses scheduled workflows after 60 days without commits; re-enable it from the **Actions** tab if that happens.
+  - **In the app:** the frontend pings the API as soon as it loads, so it starts waking up while the visitor types, and shows a "server is waking up" notice if a request takes longer than 4 seconds.
+- Free Render PostgreSQL databases expire after 30 days. Upgrade the database or create a new one before then.
+- `SEED_DEMO_DATA=true` is set so reviewers can log in with the demo accounts above. Set it to `false` for a real deployment.
+
+Deploying elsewhere works the same way: give the API a `DATABASE_URL` (add `DB_SSL=true` if the provider requires SSL), `JWT_SECRET`, `CORS_ORIGIN`, `TRUST_PROXY=1` behind a proxy and the `ADMIN_*` values; build the frontend with `VITE_API_URL` and serve `frontend/dist` with all routes rewritten to `index.html`.
 
 ---
 

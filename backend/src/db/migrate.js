@@ -6,6 +6,9 @@ const config = require('../config/env');
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 
 async function ensureDatabase() {
+  // A DATABASE_URL points at a database the host already created for us.
+  if (config.db.connectionString) return;
+
   const client = new Client({ ...config.db, database: 'postgres' });
   await client.connect();
 

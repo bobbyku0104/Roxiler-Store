@@ -16,7 +16,7 @@ async function reset() {
   try {
     await client.query('DROP SCHEMA public CASCADE');
     await client.query('CREATE SCHEMA public');
-    console.log(`Dropped all tables in "${config.db.database}"`);
+    console.log('Dropped all tables');
   } finally {
     await client.end();
   }

@@ -12,8 +12,12 @@ const ownerRoutes = require('./routes/owner.routes');
 
 const app = express();
 
+if (config.trustProxy) {
+  app.set('trust proxy', config.trustProxy);
+}
+
 app.use(helmet());
-app.use(cors({ origin: config.corsOrigin }));
+app.use(cors({ origin: config.corsOrigins }));
 app.use(express.json({ limit: '10kb' }));
 app.use('/api', apiLimiter);
 

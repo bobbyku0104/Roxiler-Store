@@ -71,7 +71,9 @@ function checkAdminConfig() {
   if (!isValidPassword(password)) problems.push(`ADMIN_PASSWORD: ${MESSAGES.password}`);
 
   if (problems.length) {
-    throw new Error(`Invalid admin settings in .env:\n  - ${problems.join('\n  - ')}`);
+    throw new Error(
+      `Invalid admin settings (check the ADMIN_* environment variables):\n  - ${problems.join('\n  - ')}`
+    );
   }
 }
 
@@ -149,11 +151,12 @@ async function seed() {
   await withTransaction(async (client) => {
     await seedAdmin(client);
 
-    // Demo accounts have publicly known passwords, so never create them in production.
-    if (config.nodeEnv === 'production') {
-      console.log('Skipping demo data because NODE_ENV=production');
-    } else {
+    // Demo accounts have publicly known passwords, so production skips them
+    // unless SEED_DEMO_DATA=true is set (useful for a public demo).
+    if (config.seedDemoData) {
       await seedDemoData(client);
+    } else {
+      console.log('Skipping demo data (set SEED_DEMO_DATA=true to include it)');
     }
   });
 }
