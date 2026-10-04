@@ -1,6 +1,10 @@
 const express = require('express');
 const cors = require('cors');
-const { ValidationError, UniqueConstraintError } = require('sequelize');
+const helmet = require('helmet');
+const config = require('./config/env');
+const { query } = require('./config/db');
+const { notFound, errorHandler } = require('./middleware/errorHandler');
+const { apiLimiter } = require('./middleware/rateLimit');
 const authRoutes = require('./routes/auth.routes');
 const adminRoutes = require('./routes/admin.routes');
 const storeRoutes = require('./routes/store.routes');
@@ -8,11 +12,18 @@ const ownerRoutes = require('./routes/owner.routes');
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+app.use(helmet());
+app.use(cors({ origin: config.corsOrigin }));
+app.use(express.json({ limit: '10kb' }));
+app.use('/api', apiLimiter);
 
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+app.get('/api/health', async (req, res) => {
+  try {
+    await query('SELECT 1');
+    res.json({ status: 'ok', database: 'up' });
+  } catch {
+    res.status(503).json({ status: 'error', database: 'down' });
+  }
 });
 
 app.use('/api/auth', authRoutes);
@@ -20,23 +31,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/stores', storeRoutes);
 app.use('/api/owner', ownerRoutes);
 
-app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
-});
-
-app.use((err, req, res, next) => {
-  if (err instanceof UniqueConstraintError) {
-    return res.status(409).json({ message: 'Record already exists' });
-  }
-  if (err instanceof ValidationError) {
-    return res.status(400).json({
-      message: 'Validation failed',
-      errors: err.errors.map((e) => ({ field: e.path, message: e.message })),
-    });
-  }
-
-  console.error(err);
-  res.status(err.status || 500).json({ message: err.message || 'Something went wrong' });
-});
+app.use(notFound);
+app.use(errorHandler);
 
 module.exports = app;

@@ -1,18 +1,21 @@
 const router = require('express').Router();
 const admin = require('../controllers/admin.controller');
-const validate = require('../middlewares/validate');
-const { authenticate, authorize } = require('../middlewares/auth');
-const { createUserRules, createStoreRules } = require('../validators/admin.validators');
+const validate = require('../middleware/validate');
+const { authenticate, authorize } = require('../middleware/auth');
+const { ROLES } = require('../utils/roles');
+const rules = require('../validators/admin.validators');
 
-router.use(authenticate, authorize('admin'));
+router.use(authenticate, authorize(ROLES.ADMIN));
 
 router.get('/dashboard', admin.getDashboard);
 
-router.get('/users', admin.listUsers);
-router.post('/users', validate(createUserRules), admin.createUser);
-router.get('/users/:id', admin.getUser);
+router.get('/users', validate(rules.listUsers), admin.listUsers);
+router.post('/users', validate(rules.createUser), admin.createUser);
+router.get('/users/:id', validate(rules.userId), admin.getUser);
 
-router.get('/stores', admin.listStores);
-router.post('/stores', validate(createStoreRules), admin.createStore);
+router.get('/owners', admin.listOwners);
+
+router.get('/stores', validate(rules.listStores), admin.listStores);
+router.post('/stores', validate(rules.createStore), admin.createStore);
 
 module.exports = router;

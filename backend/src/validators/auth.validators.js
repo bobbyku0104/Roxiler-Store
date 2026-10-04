@@ -1,16 +1,16 @@
 const { body } = require('express-validator');
-const { nameRule, emailRule, addressRule, passwordRule } = require('./common');
+const { personName, email, address, password } = require('./common.validators');
 
-const signupRules = [nameRule(), emailRule(), addressRule(), passwordRule()];
+const signup = [personName(), email(), address(), password()];
 
-const loginRules = [
-  emailRule(),
-  body('password').notEmpty().withMessage('Password is required'),
+const login = [
+  email(),
+  body('password').isString().notEmpty().withMessage('Password is required'),
 ];
 
-const updatePasswordRules = [
-  body('currentPassword').notEmpty().withMessage('Current password is required'),
-  passwordRule('newPassword'),
+const changePassword = [
+  body('currentPassword').isString().notEmpty().withMessage('Current password is required'),
+  password('newPassword'),
 ];
 
-module.exports = { signupRules, loginRules, updatePasswordRules };
+module.exports = { signup, login, changePassword };

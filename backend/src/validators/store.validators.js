@@ -1,8 +1,14 @@
-const { body, param } = require('express-validator');
+const { body } = require('express-validator');
+const { idParam, sortOrder } = require('./common.validators');
 
-const rateStoreRules = [
-  param('id').isInt({ min: 1 }).withMessage('Invalid store id').toInt(),
-  body('rating').isInt({ min: 1, max: 5 }).withMessage('Rating must be between 1 and 5').toInt(),
+const listStores = [sortOrder];
+
+const rateStore = [
+  idParam('storeId'),
+  body('rating')
+    .isInt({ min: 1, max: 5 })
+    .withMessage('Rating must be a whole number from 1 to 5')
+    .toInt(),
 ];
 
-module.exports = { rateStoreRules };
+module.exports = { listStores, rateStore };

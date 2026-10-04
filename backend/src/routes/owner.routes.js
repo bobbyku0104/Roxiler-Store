@@ -1,9 +1,12 @@
 const router = require('express').Router();
 const owner = require('../controllers/owner.controller');
-const { authenticate, authorize } = require('../middlewares/auth');
+const validate = require('../middleware/validate');
+const { authenticate, authorize } = require('../middleware/auth');
+const { ROLES } = require('../utils/roles');
+const { sortOrder } = require('../validators/common.validators');
 
-router.use(authenticate, authorize('owner'));
+router.use(authenticate, authorize(ROLES.OWNER));
 
-router.get('/dashboard', owner.getDashboard);
+router.get('/dashboard', validate([sortOrder]), owner.getDashboard);
 
 module.exports = router;
